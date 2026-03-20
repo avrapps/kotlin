@@ -822,6 +822,12 @@ private fun KaDiagnosticConverterBuilder.addConversions13() {
             token,
         )
     }
+    add(FirErrors.ABSTRACT_VALUE_CLASS_CONSTRUCTOR_PROPERTY_PARAMETER) { firDiagnostic ->
+        AbstractValueClassConstructorPropertyParameterImpl(
+            firDiagnostic as KtPsiDiagnostic,
+            token,
+        )
+    }
     add(FirErrors.WRONG_NUMBER_OF_TYPE_ARGUMENTS_IN_LOCAL_CLASS_IN_LHS_WARNING) { firDiagnostic ->
         WrongNumberOfTypeArgumentsInLocalClassInLhsWarningImpl(
             firDiagnostic.a,
@@ -1140,6 +1146,7 @@ private fun KaDiagnosticConverterBuilder.addConversions21() {
     }
     add(FirErrors.INNER_CLASS_INSIDE_VALUE_CLASS) { firDiagnostic ->
         InnerClassInsideValueClassImpl(
+            firDiagnostic.a,
             firDiagnostic as KtPsiDiagnostic,
             token,
         )
@@ -1992,6 +1999,7 @@ private fun KaDiagnosticConverterBuilder.addConversions41() {
     }
     add(FirErrors.EXPECT_VALUE_CLASS_WITH_NO_PRIMARY_CONSTRUCTOR_HAS_SECONDARY) { firDiagnostic ->
         ExpectValueClassWithNoPrimaryConstructorHasSecondaryImpl(
+            firDiagnostic.a,
             firDiagnostic as KtPsiDiagnostic,
             token,
         )
@@ -2084,6 +2092,7 @@ private fun KaDiagnosticConverterBuilder.addConversions43() {
     }
     add(FirErrors.VALUE_CLASS_CANNOT_BE_RECURSIVE) { firDiagnostic ->
         ValueClassCannotBeRecursiveImpl(
+            firDiagnostic.a,
             firDiagnostic as KtPsiDiagnostic,
             token,
         )
@@ -2741,6 +2750,7 @@ private fun KaDiagnosticConverterBuilder.addConversions61() {
     }
     add(FirErrors.INLINE_CLASS_CONSTRUCTOR_WRONG_PARAMETERS_SIZE) { firDiagnostic ->
         InlineClassConstructorWrongParametersSizeImpl(
+            firDiagnostic.a,
             firDiagnostic as KtPsiDiagnostic,
             token,
         )
@@ -2791,6 +2801,7 @@ private fun KaDiagnosticConverterBuilder.addConversions62() {
     }
     add(FirErrors.VALUE_CLASS_NOT_FINAL) { firDiagnostic ->
         ValueClassNotFinalImpl(
+            firDiagnostic.a,
             firDiagnostic as KtPsiDiagnostic,
             token,
         )
@@ -3729,6 +3740,7 @@ private fun KaDiagnosticConverterBuilder.addConversions84() {
     }
     add(FirErrors.ABSENCE_OF_PRIMARY_CONSTRUCTOR_FOR_VALUE_CLASS) { firDiagnostic ->
         AbsenceOfPrimaryConstructorForValueClassImpl(
+            firDiagnostic.a,
             firDiagnostic as KtPsiDiagnostic,
             token,
         )
@@ -4140,6 +4152,7 @@ private fun KaDiagnosticConverterBuilder.addConversions92() {
     }
     add(FirErrors.VALUE_CLASS_EMPTY_CONSTRUCTOR) { firDiagnostic ->
         ValueClassEmptyConstructorImpl(
+            firDiagnostic.a,
             firDiagnostic as KtPsiDiagnostic,
             token,
         )
@@ -4760,6 +4773,7 @@ private fun KaDiagnosticConverterBuilder.addConversions106() {
     }
     add(FirErrors.VALUE_CLASS_CANNOT_EXTEND_CLASSES) { firDiagnostic ->
         ValueClassCannotExtendClassesImpl(
+            firDiagnostic.a,
             firDiagnostic as KtPsiDiagnostic,
             token,
         )
@@ -5231,6 +5245,12 @@ private fun KaDiagnosticConverterBuilder.addConversions117() {
         InapplicableOperatorModifierWarningImpl(
             firDiagnostic.a,
             firDiagnostic.b,
+            firDiagnostic as KtPsiDiagnostic,
+            token,
+        )
+    }
+    add(FirErrors.SEALED_VALUE_CLASS_CONSTRUCTOR_PROPERTY_PARAMETER) { firDiagnostic ->
+        SealedValueClassConstructorPropertyParameterImpl(
             firDiagnostic as KtPsiDiagnostic,
             token,
         )
@@ -7774,6 +7794,7 @@ private fun KaDiagnosticConverterBuilder.addConversions175() {
     }
     add(FirErrors.VALUE_CLASS_CONSTRUCTOR_NOT_FINAL_READ_ONLY_PARAMETER) { firDiagnostic ->
         ValueClassConstructorNotFinalReadOnlyParameterImpl(
+            firDiagnostic.a,
             firDiagnostic as KtPsiDiagnostic,
             token,
         )
@@ -8204,6 +8225,7 @@ private fun KaDiagnosticConverterBuilder.addConversions188() {
     add(FirErrors.VALUE_CLASS_HAS_INAPPLICABLE_PARAMETER_TYPE) { firDiagnostic ->
         ValueClassHasInapplicableParameterTypeImpl(
             firSymbolBuilder.typeBuilder.buildKtType(firDiagnostic.a),
+            firDiagnostic.b,
             firDiagnostic as KtPsiDiagnostic,
             token,
         )
