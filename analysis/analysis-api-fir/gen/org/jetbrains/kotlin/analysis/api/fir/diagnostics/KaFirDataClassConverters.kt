@@ -2092,7 +2092,6 @@ private fun KaDiagnosticConverterBuilder.addConversions43() {
     }
     add(FirErrors.VALUE_CLASS_CANNOT_BE_RECURSIVE) { firDiagnostic ->
         ValueClassCannotBeRecursiveImpl(
-            firDiagnostic.a,
             firDiagnostic as KtPsiDiagnostic,
             token,
         )
