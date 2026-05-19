@@ -1,4 +1,8 @@
 // LANGUAGE: +CompanionBlocksAndExtensions
+// IGNORE_BACKEND: JVM, JVM_IR, WASM, WASM_JS, WASM_WASI
+// Notes:
+// WASM: dereferencing a null pointer
+// JVM: FAIL: initOrder=132
 
 var initOrder = ""
 

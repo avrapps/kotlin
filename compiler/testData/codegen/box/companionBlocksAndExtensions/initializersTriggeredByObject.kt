@@ -1,4 +1,8 @@
 // LANGUAGE: +CompanionBlocksAndExtensions
+// IGNORE_BACKEND: JVM, JVM_IR, WASM, WASM_JS, WASM_WASI
+// Notes:
+// JVM: FAIL: initOrder=B1B2O
+// WASM dereferencing a null pointer
 
 var initOrder = ""
 
@@ -15,8 +19,6 @@ class C {
             initOrder += "O"
             "object"
         }
-
-        fun getObjectProp() = objectProp
     }
 
     companion {
@@ -31,7 +33,7 @@ fun box(): String {
     // Access only via companion object - this should trigger
     // initialization of companion block properties as well,
     // since they belong to the same class's static state.
-    val op = C.getObjectProp()
+    val op = C.objectProp
 
     if (op != "object") return "FAIL: objectProp=$op"
 

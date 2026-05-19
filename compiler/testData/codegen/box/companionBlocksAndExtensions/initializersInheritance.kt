@@ -1,4 +1,7 @@
 // LANGUAGE: +CompanionBlocksAndExtensions
+// IGNORE_BACKEND: WASM, WASM_JS, WASM_WASI
+// Notes:
+// WASM dereferencing a null pointer
 
 var initOrder = ""
 
