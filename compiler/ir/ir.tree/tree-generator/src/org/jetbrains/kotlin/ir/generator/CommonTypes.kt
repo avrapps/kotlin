@@ -69,3 +69,4 @@ val irSymbolWithSignatureType = type(symbolsImpl, "IrSymbolWithSignature", TypeK
 
 val obsoleteDescriptorBasedApiAnnotation = type(BASE_PACKAGE, "ObsoleteDescriptorBasedAPI", TypeKind.Class).toAnnotation()
 val unsafeDuringIrConstructionApiAnnotation = type(symbols, "UnsafeDuringIrConstructionAPI", TypeKind.Class).toAnnotation()
+val irAnnotationConstructorSymbolToBeRemoved = type(BASE_PACKAGE, "IrAnnotationConstructorSymbolToBeRemoved", TypeKind.Class).toAnnotation()
