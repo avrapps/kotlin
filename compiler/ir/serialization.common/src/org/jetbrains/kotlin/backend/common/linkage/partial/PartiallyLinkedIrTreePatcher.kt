@@ -5,6 +5,7 @@
 
 package org.jetbrains.kotlin.backend.common.linkage.partial
 
+import org.jetbrains.kotlin.DeprecatedForRemovalCompilerApi
 import org.jetbrains.kotlin.backend.common.linkage.partial.PartialLinkageCase.*
 import org.jetbrains.kotlin.backend.common.linkage.partial.PartialLinkageUtils.DeclarationId
 import org.jetbrains.kotlin.backend.common.linkage.partial.PartialLinkageUtils.DeclarationId.Companion.declarationId
@@ -12,7 +13,6 @@ import org.jetbrains.kotlin.backend.common.linkage.partial.PartialLinkageUtils.i
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.descriptors.Modality
-import org.jetbrains.kotlin.ir.IrAnnotationConstructorSymbolToBeRemoved
 import org.jetbrains.kotlin.ir.IrBuiltIns
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.IrStatement
@@ -996,7 +996,7 @@ internal class PartiallyLinkedIrTreePatcher(
                         true // No PL errors have been found.
                     } else {
                         // Log linkage issue with minor severity. Do not throw a linkage error as this would produce broken IR.
-                        @OptIn(IrAnnotationConstructorSymbolToBeRemoved::class)
+                        @OptIn(DeprecatedForRemovalCompilerApi::class)
                         supportForLowerings.renderAndLogLinkageError(
                             partialLinkageCase = UnusableAnnotation(annotation.symbol, holderDeclarationSymbol = symbol),
                             element = this,
