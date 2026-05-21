@@ -51,18 +51,25 @@ import kotlin.collections.get
 import org.jetbrains.kotlin.backend.jvm.lower.sequence.fusion.strategies.SequenceOfStrategy
 import org.jetbrains.kotlin.backend.jvm.lower.sequence.fusion.strategies.UnknownVariableStrategy
 import org.jetbrains.kotlin.backend.jvm.lower.sequence.fusion.strategies.createSequenceWhile
+import org.jetbrains.kotlin.backend.jvm.lower.sequence.fusion.strategies.irAsNotNull
 import org.jetbrains.kotlin.ir.builders.irEquals
 import org.jetbrains.kotlin.ir.builders.irFalse
 import org.jetbrains.kotlin.ir.builders.irNull
 import org.jetbrains.kotlin.ir.builders.irString
 import org.jetbrains.kotlin.ir.builders.irTrue
+import org.jetbrains.kotlin.ir.expressions.IrContainerExpression
 import org.jetbrains.kotlin.ir.types.makeNullable
 import org.jetbrains.kotlin.ir.util.functions
 
 private const val FOR_EACH = "forEach"
 private const val FIND = "find"
+private const val FIND_LAST = "findLast"
 private const val FIRST = "first"
+private const val FIRST_NOT_NULL_OF = "firstNotNullOf"
+private const val FIRST_NOT_NULL_OF_OR_NULL = "firstNotNullOfOrNull"
+private const val FIRST_OR_NULL = "firstOrNull"
 private const val LAST = "last"
+private const val LAST_OR_NULL = "lastOrNull"
 private const val FILTER_TO = "filterTo"
 private const val FILTER_NOT_TO = "filterNotTo"
 private const val FILTER_NOT_NULL_TO = "filterNotNullTo"
@@ -141,11 +148,22 @@ internal class SequenceData(
     private typealias LoopPrologue = (IrBuilderWithParent, IrLoop, IrExpression, (IrExpression) -> IrExpression) -> IrExpression
     private typealias PreLoopDeclarations = (IrBuilderWithScope) -> MutableList<IrVariable>
 
-    fun applyMap(function: IrRichFunctionReference, offsets: Pair<Int, Int>): SequenceData {
-        val newMapReplacement = { (builder, parent): IrBuilderWithParent, argument: IrExpression ->
+    internal fun createMapReplacement(function: IrRichFunctionReference): MapReplacement =
+        { (builder, parent): IrBuilderWithParent, argument: IrExpression ->
             builder.callRichFunctionReference(function, parent, argument)
         }
 
+    internal fun createMapReplacement(function: IrRichFunctionReference, index: IrExpression): MapReplacement =
+        { (builder, parent): IrBuilderWithParent, argument: IrExpression ->
+            builder.callRichFunctionReference(function, parent, index, argument)
+        }
+
+    internal fun createMapNotNullReplacement(): MapReplacement =
+        { (builder, _): IrBuilderWithParent, argument: IrExpression ->
+            builder.irNot(builder.irEquals(argument, builder.irNull()))
+        }
+
+    internal fun applyMap(newMapReplacement: MapReplacement, offsets: Pair<Int, Int>): SequenceData {
         return SequenceData(
             composeMapReplacements(this.mapReplacement, newMapReplacement),
             this.sequenceSource,
@@ -212,7 +230,7 @@ internal class SequenceData(
             accumulator(builder, loop, valueGenerator) { nextValue -> nextSegment(builder, loop, nextValue, expressionDependentOnValue) }
         }
 
-    fun applyFilter(
+    internal fun applyFilter(
         offsets: Pair<Int, Int>,
         newSegment: LoopPrologue,
     ): SequenceData {
@@ -331,7 +349,7 @@ internal class SequenceData(
         )
     }
 
-    fun addDeclaration(declaration: IrVariable): SequenceData {
+    internal fun addDeclaration(declaration: IrVariable): SequenceData {
         val newDeclarations = { builder: IrBuilderWithScope ->
             val declarations = declarationsBeforeLoop(builder)
             declarations.add(declaration)
@@ -456,21 +474,36 @@ private class SequenceFusionTransformer(val context: JvmBackendContext) : IrElem
         is SequenceSource.Variable -> UnknownVariableStrategy(builder.irGet(this.variable.owner))
     }
 
-    private fun handleFirstLast(
-        builderWithParent: IrBuilderWithParent,
+    private fun createFirstBody(builder: IrBuilderWithScope): Pair<IrLoop, (IrExpression, IrVariable) -> IrExpression> {
+        val loop = builder.createSequenceWhile()
+        val updateVariableBlock = { argument: IrExpression, resultVariable: IrVariable ->
+            builder.irBlock {
+                +irSet(resultVariable, argument)
+                +irBreak(loop)
+            }
+        }
+        return loop to updateVariableBlock
+    }
+
+    private fun createLastBody(builder: IrBuilderWithScope): Pair<IrLoop, (IrExpression, IrVariable) -> IrExpression> {
+        val loop = builder.createSequenceWhile()
+        val updateVariableBlock = { argument: IrExpression, resultVariable: IrVariable ->
+            builder.irBlock {
+                +irSet(resultVariable, argument)
+            }
+        }
+        return loop to updateVariableBlock
+    }
+
+    private fun createFirstLastDeclarations(
         expression: IrCall,
-        updateVariableBlock: (IrVariable, IrVariable) -> IrExpression,
-        loop: IrLoop
-    ): IrExpression {
-        val builder = builderWithParent.first
-        val sequenceData = expression.arguments.getOrNull(0)?.sequenceDataOfExpression ?: return expression
-        val predicateLambda = expression.arguments.getOrNull(1) as? IrRichFunctionReference
-        if (sequenceData.offsets.size > 1) return expression
+        builder: IrBuilderWithScope,
+    ): Pair<IrVariable, IrVariable> {
         val resultVariable = builder.scope.createTemporaryVariable(
             builder.irNull(),
             isMutable = true,
             irType = expression.type.makeNullable(),
-            nameHint = "firstResult"
+            nameHint = "FirstLastResult"
         )
         val skippedIterationVariable = builder.scope.createTemporaryVariable(
             builder.irTrue(),
@@ -478,49 +511,155 @@ private class SequenceFusionTransformer(val context: JvmBackendContext) : IrElem
             irType = context.irBuiltIns.booleanType,
             nameHint = "skippedIteration"
         )
-        val predicate = predicateLambda?.let {
-            { loopVariable: IrVariable -> builder.callRichFunctionReference(it, builderWithParent.second, builder.irGet(loopVariable)) }
-        }
+        return resultVariable to skippedIterationVariable
+    }
 
-        val updatedSequenceData = sequenceData.addDeclaration(resultVariable).addDeclaration(skippedIterationVariable)
-        val strategy = updatedSequenceData.sequenceSource.createStrategy(builder)
-        val oldBody = { loopVariable: IrVariable ->
-            builder.irBlock {
-                +irSet(skippedIterationVariable, builder.irFalse())
-                if (predicate != null) +irIfThen(
-                    context.irBuiltIns.unitType,
-                    predicate(loopVariable),
-                    updateVariableBlock(loopVariable, resultVariable)
-                ) else +updateVariableBlock(loopVariable, resultVariable)
-            }
-        }
+    private fun createFirstLastBody(
+        strategy: LoweringStrategy,
+        builderWithParent: IrBuilderWithParent,
+        oldBody: (IrVariable) -> IrContainerExpression,
+        sequenceData: SequenceData,
+        loop: IrLoop,
+        isOrNull: Boolean,
+        skippedIterationVariable: IrVariable,
+    ): IrContainerExpression? {
+        val builder = builderWithParent.first
         val newBody =
             strategy.lowerLoop(
                 builderWithParent,
                 oldBody,
-                updatedSequenceData,
+                sequenceData,
                 loop,
                 null
             )
-                ?: return expression
+                ?: return null
 
-        val throwStatement = builder.irIfThen(
-            context.irBuiltIns.unitType,
-            builder.irGet(skippedIterationVariable),
-            builder.irThrow(
-                builder.irCall(context.symbols.noSuchElementExceptionCtorString).apply {
-                    arguments[0] = builder.irString("Sequence is empty.")
-                }
-            )
-        )
-
-        newBody.statements.add(throwStatement)
-        newBody.statements.add(builder.irGet(resultVariable))
-        newBody.type = expression.type
+//        val notFoundStatement = if (isOrNull) null else builder.irIfThen(
+//            context.irBuiltIns.unitType,
+//            builder.irGet(skippedIterationVariable),
+//            builder.irThrow(
+//                builder.irCall(context.symbols.noSuchElementExceptionCtorString).apply {
+//                    arguments[0] = builder.irString("Sequence is empty.")
+//                }
+//            )
+//        )
+//
+//        if (notFoundStatement != null)
+//            newBody.statements.add(notFoundStatement)
         return newBody
     }
 
-    private fun handleFind(expression: IrCall, builderWithParent: IrBuilderWithParent): IrExpression {
+    private inline fun firstLastDeclarations(
+        expression: IrCall,
+        sequenceData: SequenceData,
+        builderWithParent: IrBuilderWithParent,
+        block: (
+            builder: IrBuilderWithScope,
+            parent: IrDeclarationParent,
+            updatedData: SequenceData,
+            strategy: LoweringStrategy,
+            predicate: IrRichFunctionReference?,
+            resultVariable: IrVariable,
+            skippedIterationVariable: IrVariable,
+        ) -> IrExpression
+    ): IrExpression {
+        val (builder, parent) = builderWithParent
+        if (sequenceData.offsets.size > 1) return expression
+
+        val (resultVariable, skippedIterationVariable) = createFirstLastDeclarations(expression, builder)
+        val updatedSequenceData = sequenceData.addDeclaration(resultVariable).addDeclaration(skippedIterationVariable)
+        val strategy = updatedSequenceData.sequenceSource.createStrategy(builder)
+        val lambda = expression.arguments.getOrNull(1) as? IrRichFunctionReference
+
+        return block(builder, parent, updatedSequenceData, strategy, lambda, resultVariable, skippedIterationVariable)
+    }
+
+    private fun handleFirstLast(
+        builderWithParent: IrBuilderWithParent,
+        expression: IrCall,
+        sequenceData: SequenceData,
+        updateVariableBlock: (IrExpression, IrVariable) -> IrExpression,
+        loop: IrLoop,
+        isOrNull: Boolean,
+    ): IrExpression {
+        return firstLastDeclarations(
+            expression,
+            sequenceData,
+            builderWithParent
+        ) { builder, parent, updatedSequenceData, strategy, predicateLambda, resultVariable, skippedIterationVariable ->
+            val predicate = predicateLambda?.let {
+                { argument: IrExpression -> builder.callRichFunctionReference(it, parent, argument) }
+            }
+            val oldBody = { loopVariable: IrVariable ->
+                val thenPart = builder.irBlock {
+                    +irSet(skippedIterationVariable, builder.irFalse())
+                    +updateVariableBlock(irGet(loopVariable), resultVariable)
+                }
+                builder.irBlock {
+                    if (predicate != null) {
+                        +irIfThen(
+                            context.irBuiltIns.unitType,
+                            predicate(irGet(loopVariable)),
+                            thenPart
+                        )
+                    } else +thenPart
+                }
+            }
+            val newBody =
+                createFirstLastBody(strategy, builderWithParent, oldBody, updatedSequenceData, loop, isOrNull, skippedIterationVariable)
+                    ?: return expression
+            if (expression.type != resultVariable.type) {
+                newBody.statements.add(builder.irAsNotNull(builder.irGet(resultVariable)))
+            } else {
+                newBody.statements.add(builder.irGet(resultVariable))
+            }
+            newBody.type = expression.type
+            return newBody
+        }
+    }
+
+    private fun handleFirstNotNullOf(
+        builderWithParent: IrBuilderWithParent,
+        expression: IrCall,
+        sequenceData: SequenceData,
+        updateVariableBlock: (IrExpression, IrVariable) -> IrExpression,
+        loop: IrLoop,
+        isOrNull: Boolean,
+    ): IrExpression {
+        return firstLastDeclarations(
+            expression,
+            sequenceData,
+            builderWithParent
+        ) { builder, parent, updatedSequenceData, strategy, transformLambda, resultVariable, skippedIterationVariable ->
+            val transform = transformLambda?.let {
+                { argument: IrExpression -> builder.callRichFunctionReference(it, parent, argument) }
+            } ?: return expression
+
+            val oldBody = { loopVariable: IrVariable ->
+                val resultValue = builder.scope.createTemporaryVariable(transform(builder.irGet(loopVariable)))
+                val thenPart = builder.irBlock {
+                    +irSet(skippedIterationVariable, builder.irFalse())
+                    +updateVariableBlock(irGet(resultValue), resultVariable)
+                }
+                builder.irBlock {
+                    +resultValue
+                    +irIfThen(
+                        context.irBuiltIns.unitType,
+                        irNot(irEquals(irGet(resultValue), irNull())),
+                        thenPart
+                    )
+                }
+            }
+            val newBody =
+                createFirstLastBody(strategy, builderWithParent, oldBody, updatedSequenceData, loop, isOrNull, skippedIterationVariable)
+                    ?: return expression
+            newBody.statements.add(builder.irAsNotNull(builder.irGet(resultVariable)))
+            newBody.type = expression.type
+            return newBody
+        }
+    }
+
+    private fun handleFind(expression: IrCall, builderWithParent: IrBuilderWithParent, isFirst: Boolean): IrExpression {
         val (builder, parent) = builderWithParent
         val sequenceData = expression.arguments.getOrNull(0)?.sequenceDataOfExpression ?: return expression
         val findPredicate = expression.arguments.getOrNull(1) as? IrRichFunctionReference ?: return expression
@@ -533,7 +672,7 @@ private class SequenceFusionTransformer(val context: JvmBackendContext) : IrElem
                 val isFoundVariable = irTemporary(predicateCall)
                 val thenPart = irBlock {
                     +irSet(resultVariable, irGet(loopVariable))
-                    +irBreak(loop)
+                    if (isFirst) +irBreak(loop)
                 }
                 +irIfThen(context.irBuiltIns.unitType, irGet(isFoundVariable), thenPart)
             }
@@ -559,11 +698,17 @@ private class SequenceFusionTransformer(val context: JvmBackendContext) : IrElem
             it.name.asString() == "add" && it.parameters.size == 2
         } ?: return expression
         val loop = builder.createSequenceWhile()
+        val destinationVariable = builder.scope.createTemporaryVariable(destination, "filterToDestination")
+        val updatedSequenceData = sequenceData.addDeclaration(destinationVariable)
         val body = { loopVariable: IrVariable ->
             builder.irBlock {
                 val destinationAddCall = builder.irCall(addFunction).apply {
-                    arguments[0] = destination
-                    arguments[1] = irGet(loopVariable)
+                    arguments[0] = irGet(destinationVariable)
+                    if (version == FilterVersion.FilterNotNull) {
+                        arguments[1] = irAsNotNull(irGet(loopVariable))
+                    } else {
+                        arguments[1] = irGet(loopVariable)
+                    }
                 }
                 val shouldAddVariableCheck = when (version) {
                     FilterVersion.Filter -> callRichFunctionReference(predicate!!, parent, irGet(loopVariable))
@@ -578,8 +723,10 @@ private class SequenceFusionTransformer(val context: JvmBackendContext) : IrElem
             }
         }
 
-        val strategy = sequenceData.sequenceSource.createStrategy(builder)
-        val newBody = strategy.lowerLoop(builderWithParent, body, sequenceData, loop, null) ?: return expression
+        val strategy = updatedSequenceData.sequenceSource.createStrategy(builder)
+        val newBody = strategy.lowerLoop(builderWithParent, body, updatedSequenceData, loop, null) ?: return expression
+        newBody.statements.add(builder.irGet(destinationVariable))
+        newBody.type = destination.type
         return newBody
     }
 
@@ -605,33 +752,39 @@ private class SequenceFusionTransformer(val context: JvmBackendContext) : IrElem
         val builder = context.createIrBuilder(currentScope!!.scope.scopeOwnerSymbol, expression.startOffset, expression.endOffset)
         val parent =
             currentScope?.scope?.scopeOwnerSymbol as? IrDeclarationParent ?: currentDeclarationParent ?: return visitedExpression
+        val sequenceData = expression.arguments.getOrNull(0)?.sequenceDataOfExpression ?: return visitedExpression
         return when (functionName) {
             FOR_EACH -> {
                 val functionData = gatherFunctionData(visitedExpression, parent) ?: return visitedExpression
-                val sequenceData = expression.arguments.getOrNull(0)?.sequenceDataOfExpression ?: return visitedExpression
                 if (sequenceData.offsets.size > 1) return visitedExpression
                 val strategy = sequenceData.sequenceSource.createStrategy(builder)
                 strategy.lowerFunction(builder to parent, functionData.function, sequenceData) ?: visitedExpression
             }
-            FIND -> handleFind(visitedExpression, builder to parent)
-            FIRST -> {
-                val loop = builder.createSequenceWhile()
-                val updateVariableBlock = { loopVariable: IrVariable, resultVariable: IrVariable ->
-                    builder.irBlock {
-                        +irSet(resultVariable, irGet(loopVariable))
-                        +irBreak(loop)
-                    }
-                }
-                handleFirstLast(builder to parent, visitedExpression, updateVariableBlock, loop)
+            FIND -> handleFind(visitedExpression, builder to parent, isFirst = true)
+            FIND_LAST -> handleFind(visitedExpression, builder to parent, isFirst = false)
+//            FIRST -> {
+//                val (loop, updateVariableBlock) = createFirstBody(builder)
+//                handleFirstLast(builder to parent, visitedExpression, sequenceData, updateVariableBlock, loop, isOrNull = false)
+//            }
+            FIRST_OR_NULL -> {
+                val (loop, updateVariableBlock) = createFirstBody(builder)
+                handleFirstLast(builder to parent, visitedExpression, sequenceData, updateVariableBlock, loop, isOrNull = true)
             }
-            LAST -> {
-                val loop = builder.createSequenceWhile()
-                val updateVariableBlock = { loopVariable: IrVariable, resultVariable: IrVariable ->
-                    builder.irBlock {
-                        +irSet(resultVariable, irGet(loopVariable))
-                    }
-                }
-                handleFirstLast(builder to parent, visitedExpression, updateVariableBlock, loop)
+//            FIRST_NOT_NULL_OF -> {
+//                val (loop, updateVariableBlock) = createFirstBody(builder)
+//                handleFirstNotNullOf(builder to parent, visitedExpression, sequenceData, updateVariableBlock, loop, isOrNull = false)
+//            }
+            FIRST_NOT_NULL_OF_OR_NULL -> {
+                val (loop, updateVariableBlock) = createFirstBody(builder)
+                handleFirstNotNullOf(builder to parent, visitedExpression, sequenceData, updateVariableBlock, loop, isOrNull = true)
+            }
+//            LAST -> {
+//                val (loop, updateVariableBlock) = createLastBody(builder)
+//                handleFirstLast(builder to parent, visitedExpression, sequenceData, updateVariableBlock, loop, isOrNull = false)
+//            }
+            LAST_OR_NULL -> {
+                val (loop, updateVariableBlock) = createLastBody(builder)
+                handleFirstLast(builder to parent, visitedExpression, sequenceData, updateVariableBlock, loop, isOrNull = true)
             }
             FILTER_TO -> handleFilterTo(builder to parent, visitedExpression, FilterVersion.Filter)
             FILTER_NOT_TO -> handleFilterTo(builder to parent, visitedExpression, FilterVersion.FilterNot)

@@ -7,6 +7,11 @@ package org.jetbrains.kotlin.backend.jvm.lower.sequence.fusion
 
 import org.jetbrains.kotlin.backend.jvm.JvmBackendContext
 import org.jetbrains.kotlin.ir.IrElement
+import org.jetbrains.kotlin.ir.builders.irBlock
+import org.jetbrains.kotlin.ir.builders.irCall
+import org.jetbrains.kotlin.ir.builders.irGet
+import org.jetbrains.kotlin.ir.builders.irInt
+import org.jetbrains.kotlin.ir.builders.irSet
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrValueDeclaration
 import org.jetbrains.kotlin.ir.declarations.IrVariable
@@ -35,6 +40,9 @@ private const val SEQUENCE_OF = "sequenceOf"
 private const val AS_SEQUENCE = "asSequence"
 private const val GENERATE_SEQUENCE = "generateSequence"
 private const val MAP = "map"
+private const val MAP_INDEXED = "mapIndexed"
+private const val MAP_NOT_NULL = "mapNotNull"
+private const val MAP_NOT_NULL_INDEXED = "mapIndexedNotNull"
 private const val FILTER = "filter"
 private const val FILTER_NOT = "filterNot"
 private const val FILTER_NOT_NULL = "filterNotNull"
@@ -173,18 +181,36 @@ internal class SequenceDataGatherer(val context: JvmBackendContext) : IrVisitorV
         return true
     }
 
-    // checks if the applied function is safe to be lowered, then updates the sequence data if it is
-    private inline fun updateSequenceDataUsingFunctionReference(
+    private fun matchWithMap(
         call: IrCall,
-        applyFunction: (SequenceData, IrRichFunctionReference, Pair<Int, Int>) -> SequenceData
+        isIndexed: Boolean,
+        isNotNull: Boolean,
     ) {
         val receiver = call.arguments.getOrNull(0) ?: return
-        val fnArg = call.arguments.getOrNull(1) ?: return
-        val fnRef = fnArg as? IrRichFunctionReference ?: return
-        if (!isSafeToLower(fnRef)) return
-
         val receiverData = receiver.sequenceDataOfExpression ?: return
-        call.sequenceDataOfExpression = applyFunction(receiverData, fnRef, call.startOffset to call.endOffset)
+        val newMapReplacement = if (!isNotNull) {
+            val fnArg = call.arguments.getOrNull(1) ?: return
+            val fnRef = fnArg as? IrRichFunctionReference ?: return
+            if (!isSafeToLower(fnRef)) return
+            val mapReplacement = receiverData.createMapReplacement(fnRef)
+            if (isIndexed) {
+                { (builder, parent): IrBuilderWithParent, value: IrExpression ->
+                    val indexVariable = builder.scope.createTemporaryVariable(builder.irInt(0), isMutable = true)
+                    receiverData.addDeclaration(indexVariable)
+                    builder.irBlock {
+                        +irSet(indexVariable, irCall(context.irBuiltIns.intPlusSymbol).apply {
+                            dispatchReceiver = irGet(indexVariable)
+                            arguments[1] = irInt(1)
+                        })
+                        +mapReplacement(builder to parent, value)
+                    }
+                }
+            } else mapReplacement
+        } else {
+            receiverData.createMapNotNullReplacement()
+        }
+
+        call.sequenceDataOfExpression = receiverData.applyMap(newMapReplacement, call.startOffset to call.endOffset)
     }
 
     private inline fun updateSequenceDataUsingExpression(
@@ -332,7 +358,10 @@ internal class SequenceDataGatherer(val context: JvmBackendContext) : IrVisitorV
         if (!isElementSequence(context, expression)) return
         val functionName = expression.symbol.owner.name.asString()
         when (functionName) {
-            MAP -> updateSequenceDataUsingFunctionReference(expression, SequenceData::applyMap)
+            MAP -> matchWithMap(expression, isIndexed = false, isNotNull = false)
+            MAP_INDEXED -> matchWithMap(expression, isIndexed = true, isNotNull = false)
+            MAP_NOT_NULL -> matchWithMap(expression, isIndexed = false, isNotNull = true)
+            MAP_NOT_NULL_INDEXED -> matchWithMap(expression, isIndexed = true, isNotNull = true)
             FILTER -> matchWithFilter(expression, FilterVersion.Filter)
             FILTER_NOT -> matchWithFilter(expression, FilterVersion.FilterNot)
             FILTER_NOT_NULL -> matchWithFilter(expression, FilterVersion.FilterNotNull)

@@ -16,7 +16,8 @@ fun box(): String {
     if (list2 != listOf(1, 3)) return "failed FilterNotTo, got $list2"
     val seq3 = listOf(-1, -2, null, -3, -4, null).asSequence().map { it?.times(-1) }
     val list3 = mutableListOf<Int>()
-    seq3.filterNotNullTo(list3)
+    val list4 = seq3.filterNotNullTo(list3)
     if (list3 != listOf(1, 2, 3, 4)) return "failed FilterNotNullTo, got $list3"
+    if (list4 != listOf(1, 2, 3, 4)) return "failed: FilterNotNullTo returned $list4"
     return "OK"
 }
