@@ -172,7 +172,7 @@ fun IrSymbol.hasTopLevelEqualFqName(packageName: String, declarationName: String
     }
 }
 
-fun List<IrAnnotation>.hasAnnotation(classId: ClassId): Boolean = any { it.classSymbol.owner.classId == classId }
+fun List<IrAnnotation>.hasAnnotation(classId: ClassId): Boolean = any { it.classId == classId }
 
 fun List<IrAnnotation>.hasAnnotation(fqName: FqName): Boolean =
     any { it.isAnnotationWithEqualFqName(fqName) }

@@ -23,9 +23,9 @@ import org.jetbrains.kotlin.ir.types.isNullableAny
 import org.jetbrains.kotlin.ir.types.makeNotNull
 import org.jetbrains.kotlin.ir.util.DeepCopyIrTreeWithSymbols
 import org.jetbrains.kotlin.ir.util.SymbolRemapper
-import org.jetbrains.kotlin.ir.util.constructedClass
 import org.jetbrains.kotlin.ir.util.isClass
 import org.jetbrains.kotlin.ir.util.isInterface
+import org.jetbrains.kotlin.ir.util.primaryConstructor
 import org.jetbrains.kotlin.ir.util.render
 import org.jetbrains.kotlin.utils.addToStdlib.assignFrom
 import org.jetbrains.kotlin.utils.memoryOptimizedMap
@@ -219,7 +219,7 @@ internal open class ActualizerVisitor(
         }
 
     override fun visitAnnotation(expression: IrAnnotation): IrAnnotation {
-        val constructorSymbol = symbolRemapper.getReferencedConstructor(expression.symbol)
+        val constructorSymbol = symbolRemapper.getReferencedConstructor(expression.classSymbol.owner.primaryConstructor!!.symbol)
 
         return IrAnnotationImpl(
             expression.startOffset,
