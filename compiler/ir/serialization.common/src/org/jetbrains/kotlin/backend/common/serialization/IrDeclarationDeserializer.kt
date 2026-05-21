@@ -80,7 +80,6 @@ class IrDeclarationDeserializer(
     private val specialProcessingForMismatchedSymbolKind: ((deserializedSymbol: IrSymbol, fallbackSymbolKind: SymbolKind?) -> IrSymbol)?,
     private val irInterner: IrInterningService,
     private val fileEntryDeserializer: FileEntryDeserializer,
-    private val compatibilityMode: CompatibilityMode = CompatibilityMode.CURRENT,
 ) {
     private var areFunctionBodiesDeserialized: Boolean =
         settings.deserializeFunctionBodies == DeserializeFunctionBodies.ALL
@@ -94,7 +93,6 @@ class IrDeclarationDeserializer(
         settings = settings,
         irInterner = irInterner,
         fileEntryDeserializer = fileEntryDeserializer,
-        compatibilityMode = compatibilityMode,
     )
 
     private fun deserializeName(index: Int): Name = irInterner.name(Name.guessByFirstCharacter(libraryFile.string(index)))

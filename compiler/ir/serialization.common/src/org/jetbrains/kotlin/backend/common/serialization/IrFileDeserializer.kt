@@ -121,7 +121,6 @@ class FileDeserializationState(
         },
         irInterner = linker.irInterner,
         fileEntryDeserializer = linker.fileEntryDeserializer,
-        compatibilityMode = moduleDeserializer.compatibilityMode,
     )
 
     val fileDeserializer = IrFileDeserializer(file, fileReader, fileProto, symbolDeserializer, declarationDeserializer)

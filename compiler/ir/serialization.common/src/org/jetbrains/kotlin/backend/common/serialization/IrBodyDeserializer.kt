@@ -98,7 +98,6 @@ class IrBodyDeserializer(
     private val settings: IrDeserializationSettings,
     private val irInterner: IrInterningService,
     private val fileEntryDeserializer: FileEntryDeserializer,
-    private val compatibilityMode: CompatibilityMode = CompatibilityMode.CURRENT,
 ) {
 
     private val fileLoops = hashMapOf<Int, IrLoop>()
@@ -637,7 +636,7 @@ class IrBodyDeserializer(
      * See KT-75112, KT-86180.
      */
     private fun fixKProperty2TypeParameterOrderIfNeeded(type: IrType): IrType {
-        if (!compatibilityMode.swappedKProperty2TypeParameterOrder) return type
+        if (!settings.fixSwappedKProperty2TypeParameterOrder) return type
         if (type !is IrSimpleType) return type
         if (type.arguments.size != 3) return type
         if (!type.isKProperty() && !type.isKMutableProperty()) return type
