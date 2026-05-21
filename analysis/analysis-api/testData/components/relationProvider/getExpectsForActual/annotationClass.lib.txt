@@ -1,0 +1,2 @@
+expected symbols:
+0_sample.knm : expect annotation class Marker
