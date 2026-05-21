@@ -11,6 +11,10 @@ expect enum class Color { RED, GREEN, BLUE }
 
 // MODULE: jvm()()(common)
 // TARGET_PLATFORM: JVM
+
+// The 'actual' enum is missing entries declared on the 'expect' enum
+// COMPILATION_ERRORS
+
 // FILE: Jvm.kt
 
 package sample

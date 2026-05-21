@@ -13,6 +13,10 @@ expect val foo: Int
 
 // MODULE: jvm()()(common)
 // TARGET_PLATFORM: JVM
+
+// 'expect' is a property and 'actual' is a function
+// COMPILATION_ERRORS
+
 // FILE: Jvm.kt
 
 package sample

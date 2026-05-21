@@ -11,6 +11,10 @@ expect fun some(vararg n: Int)
 
 // MODULE: jvm()()(common)
 // TARGET_PLATFORM: JVM
+
+// 'expect' parameter is 'vararg' but 'actual' parameter is not
+// COMPILATION_ERRORS
+
 // FILE: Jvm.kt
 
 package sample

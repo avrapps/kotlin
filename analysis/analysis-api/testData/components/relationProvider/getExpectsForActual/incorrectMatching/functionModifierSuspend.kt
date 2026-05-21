@@ -11,6 +11,10 @@ expect suspend fun foo()
 
 // MODULE: jvm()()(common)
 // TARGET_PLATFORM: JVM
+
+// 'expect' is 'suspend' but 'actual' is not
+// COMPILATION_ERRORS
+
 // FILE: Jvm.kt
 
 package sample

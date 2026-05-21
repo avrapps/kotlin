@@ -11,6 +11,10 @@ expect fun foo()
 
 // MODULE: jvm()()(common)
 // TARGET_PLATFORM: JVM
+
+// 'expect' is a non-extension function and 'actual' is an extension function
+// COMPILATION_ERRORS
+
 // FILE: Jvm.kt
 
 package sample

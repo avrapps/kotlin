@@ -14,6 +14,10 @@ expect class Platform {
 
 // MODULE: jvm()()(common)
 // TARGET_PLATFORM: JVM
+
+// The 'actual' class is missing members declared on the 'expect' class
+// COMPILATION_ERRORS
+
 // FILE: Jvm.kt
 
 package sample

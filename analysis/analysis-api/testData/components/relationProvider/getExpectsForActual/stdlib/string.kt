@@ -1,5 +1,7 @@
+// WITH_STDLIB
+
 // LANGUAGE: +MultiPlatformProjects
-// class: sample/Box
+// DISABLE_COORDINATE_TEST
 
 // MODULE: common
 // TARGET_PLATFORM: Common
@@ -7,16 +9,12 @@
 
 package sample
 
-expect class Box<T>
+expect fun foo(text: String)
 
 // MODULE: jvm()()(common)
 // TARGET_PLATFORM: JVM
-
-// The 'actual' class has an extra type parameter
-// COMPILATION_ERRORS
-
 // FILE: Jvm.kt
 
 package sample
 
-<expr>actual class Box<T, R></expr>
+actual fun foo(text: Str<caret>ing) {}

@@ -11,6 +11,10 @@ expect class Foo
 
 // MODULE: jvm()()(common)
 // TARGET_PLATFORM: JVM
+
+// 'expect' is a class and 'actual' is an interface
+// COMPILATION_ERRORS
+
 // FILE: Jvm.kt
 
 package sample

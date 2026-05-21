@@ -11,6 +11,10 @@ expect fun <T> some(): T
 
 // MODULE: jvm()()(common)
 // TARGET_PLATFORM: JVM
+
+// 'expect' and 'actual' functions have a different number of type parameters
+// COMPILATION_ERRORS
+
 // FILE: Jvm.kt
 
 package sample

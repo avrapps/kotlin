@@ -13,6 +13,10 @@ expect class Foo : Base
 
 // MODULE: jvm()()(common)
 // TARGET_PLATFORM: JVM
+
+// 'actual' class is missing a supertype declared on the 'expect' class
+// COMPILATION_ERRORS
+
 // FILE: Jvm.kt
 
 package sample

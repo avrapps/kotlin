@@ -11,6 +11,10 @@ expect open class Foo
 
 // MODULE: jvm()()(common)
 // TARGET_PLATFORM: JVM
+
+// 'expect' is 'open' but 'actual' is 'final'
+// COMPILATION_ERRORS
+
 // FILE: Jvm.kt
 
 package sample
