@@ -145,10 +145,8 @@ class KotlinKarma internal constructor(
         rules = project.objects.webpackRulesContainer(),
         experiments = mutableSetOf("topLevelAwait"),
         resolveLoadersFromKotlinToolingDir = isWasm,
-        objects = objects,
-    ).also {
-        it.defineNonBrowserEnvironmentProperties.set(isWasm)
-    }
+        defineNonBrowserEnvironmentProperties = objects.property<Boolean>().convention(isWasm),
+    )
 
     init {
         requiredDependencies.add(versions.karma)

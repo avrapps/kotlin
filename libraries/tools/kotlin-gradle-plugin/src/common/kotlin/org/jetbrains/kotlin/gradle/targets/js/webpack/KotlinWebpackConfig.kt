@@ -63,17 +63,14 @@ data class KotlinWebpackConfig(
     var progressReporter: Boolean = false,
     var resolveFromModulesFirst: Boolean = false,
     var resolveLoadersFromKotlinToolingDir: Boolean = false,
-    private val objects: ObjectFactory,
-) : WebpackRulesDsl {
-
     /**
      * When enabled, adds webpack [DefinePlugin](https://webpack.js.org/plugins/define-plugin/) entries
      * that mark non-browser JS environments (Node.js, Deno, d8, etc.) as undefined.
      * This helps the bundler remove dead code produced by the Wasm compiler
      * that targets environments other than the browser.
      */
-    val defineNonBrowserEnvironmentProperties: Property<Boolean> =
-        objects.property(Boolean::class.java).convention(false)
+    val defineNonBrowserEnvironmentProperties: Property<Boolean>,
+) : WebpackRulesDsl {
 
     val entryInput: String?
         get() = npmProjectDir?.get()?.let { npmProjectDir -> entry?.relativeTo(npmProjectDir)?.invariantSeparatorsPath }

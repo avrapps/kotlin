@@ -215,10 +215,8 @@ internal constructor(
      */
     private val fakeWebpackConfig: KotlinWebpackConfig = KotlinWebpackConfig(
         rules = project.objects.webpackRulesContainer(),
-        objects = project.objects,
-    ).also {
-        it.defineNonBrowserEnvironmentProperties.set(false)
-    }
+        defineNonBrowserEnvironmentProperties = objects.property<Boolean>().convention(getIsWasm),
+    )
 
     fun webpackConfigApplier(body: Action<KotlinWebpackConfig>) {
         body.execute(fakeWebpackConfig)
@@ -255,10 +253,8 @@ internal constructor(
         sourceMaps = sourceMaps,
         resolveFromModulesFirst = resolveFromModulesFirst,
         resolveLoadersFromKotlinToolingDir = getIsWasm.get(),
-        objects = objects,
-    ).also {
-        it.defineNonBrowserEnvironmentProperties.set(getIsWasm)
-    }
+        defineNonBrowserEnvironmentProperties = objects.property<Boolean>().convention(getIsWasm),
+    )
 
     private fun createRunner(): KotlinWebpackRunner {
         val config = createWebpackConfig()
@@ -318,9 +314,7 @@ internal constructor(
             runner.copy(
                 config = runner.config.copy(
                     progressReporter = true,
-                ).also {
-                    it.defineNonBrowserEnvironmentProperties.set(runner.config.defineNonBrowserEnvironmentProperties)
-                }
+                )
             ).execute()
 
             val buildMetrics = metrics.get()
