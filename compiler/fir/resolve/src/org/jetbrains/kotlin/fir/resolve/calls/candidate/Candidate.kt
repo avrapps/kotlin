@@ -306,7 +306,7 @@ class Candidate(
      * as it contains conditions that rely on subtle differences between the implementation of this property and
      * [org.jetbrains.kotlin.resolve.calls.tower.isSuccess].
      */
-    val isSuccessful: Boolean
+    override val isSuccessful: Boolean
         get() = diagnostics.allSuccessful && (!systemInitialized || !system.hasContradiction)
 
     // ---------------------------------------- Receivers ----------------------------------------

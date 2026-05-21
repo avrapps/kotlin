@@ -1473,6 +1473,9 @@ class FirCallCompletionResultsWriterTransformer(
     // TODO: report warning with a checker and return true here only in case of errors, KT-59676
     private fun FirNamedReferenceWithCandidate.hasAdditionalResolutionErrors(): Boolean =
         candidate.system.errors.any { it is InferredEmptyIntersection }
+                // In delegate inference, errors are collected into a separate `parentConstraintSystem` and are
+                // then written into the `candidate.diagnostics`, not the original CS.
+                || candidate.diagnostics.any { it is InferenceError && it.constraintError is InferredEmptyIntersection }
 
     private fun FirNamedReferenceWithCandidate.toResolvedReference(): FirNamedReference {
         val errorDiagnostic = when {

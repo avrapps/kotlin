@@ -364,7 +364,8 @@ private fun ConeConstraintSystemHasContradiction.mapSystemHasContradictionError(
     source: KtSourceElement?,
     qualifiedAccessSource: KtSourceElement?,
 ): List<KtDiagnostic> {
-    val errors = candidate.errors
+    // See: `org.jetbrains.kotlin.fir.resolve.transformers.FirCallCompletionResultsWriterTransformer.hasAdditionalResolutionErrors`
+    val errors = candidate.errors + candidate.diagnostics.mapNotNull { (it as? InferenceError)?.constraintError }
     return errors.mapNotNull { error ->
         error.mapConstraintSystemError(
             source,
