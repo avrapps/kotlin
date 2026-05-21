@@ -74,6 +74,10 @@ constructor() : AbstractExecTask<BinaryenExec>(BinaryenExec::class.java) {
         dir.file(fileName)
     }
 
+    @get:OutputDirectory
+    @get:Optional
+    abstract val logDirectory: DirectoryProperty
+
     override fun exec() {
         @Suppress("DEPRECATION")
         if (inputFileProperty.isPresent) {
@@ -89,6 +93,10 @@ constructor() : AbstractExecTask<BinaryenExec>(BinaryenExec::class.java) {
                 it.args.set(binaryenArguments.get())
                 it.inputFile.set(inputFile)
                 it.outputFile.set(outputDirectory.file(inputFile.name).getFile())
+
+                if (logDirectory.isPresent) {
+                    it.logFile.set(logDirectory.file(inputFile.nameWithoutExtension).getFile())
+                }
             }
         }
     }

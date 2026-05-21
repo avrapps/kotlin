@@ -10,6 +10,7 @@ import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.provider.ListProperty
 import org.gradle.api.provider.Property
 import org.gradle.process.ExecOperations
+import org.gradle.process.ExecSpec
 import org.gradle.workers.WorkAction
 import org.gradle.workers.WorkParameters
 import org.jetbrains.kotlin.gradle.utils.getFile
@@ -22,19 +23,37 @@ internal abstract class BinaryenWorkAction : WorkAction<BinaryenWorkAction.Binar
         val args: ListProperty<String>
         val inputFile: RegularFileProperty
         val outputFile: RegularFileProperty
+        val logFile: RegularFileProperty
     }
 
     @get:Inject
     abstract val execOperations: ExecOperations
 
     override fun execute() {
-        execOperations.exec {
-            it.executable = parameters.executable.get()
-            it.workingDir = parameters.workingDir.getFile()
-            it.args = parameters.args.get() +
-                    parameters.inputFile.getFile().absolutePath +
-                    "-o" +
-                    parameters.outputFile.getFile().absolutePath
+        val logFile = parameters.logFile
+        if (!logFile.isPresent) {
+            execOperations.exec {
+                it.commonExecConfiguration()
+            }
+            return
         }
+
+        logFile.getFile().outputStream().use { output ->
+            execOperations.exec {
+                it.commonExecConfiguration()
+
+                it.standardOutput = output
+                it.errorOutput = output
+            }
+        }
+    }
+
+    private fun ExecSpec.commonExecConfiguration() {
+        executable = parameters.executable.get()
+        workingDir = parameters.workingDir.getFile()
+        args = parameters.args.get() +
+                parameters.inputFile.getFile().absolutePath +
+                "-o" +
+                parameters.outputFile.getFile().absolutePath
     }
 }
