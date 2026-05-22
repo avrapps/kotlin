@@ -7,7 +7,6 @@ package org.jetbrains.kotlin.gradle.apple
 
 import org.gradle.util.GradleVersion
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
-import org.jetbrains.kotlin.gradle.apple.initSwiftPmProject
 import org.jetbrains.kotlin.gradle.plugin.mpp.apple.swiftimport.FetchSyntheticImportProjectPackages
 import org.jetbrains.kotlin.gradle.plugin.mpp.apple.swiftimport.GenerateSyntheticLinkageImportProject
 import org.jetbrains.kotlin.gradle.plugin.mpp.apple.swiftimport.PackageResolvedSynchronization
@@ -639,11 +638,7 @@ class SwiftPMImportPersistentIdentifierPackageLockIntegrationTests : KGPBaseTest
                 val fuzzRepo = repoRef(fuzzRepoName).also { createRepo(it.name, listOf("1.0.0")) }
                 val buzzRepo = repoRef(buzzRepoName).also { createRepo(it.name, listOf("1.0.0")) }
 
-                initSwiftPmProject(cacheDirFile) {
-                    swiftPMDependencies {
-                        packageResolvedSynchronization = PackageResolvedSynchronization.Identifier("default")
-                    }
-                }
+                initSwiftPmProject(cacheDirFile) {}
 
 
                 val identifierGitIgnoreFuzz = projectPath.resolve(".swiftpm-locks/$fuzzIdentifier/.gitignore")
@@ -770,28 +765,18 @@ class SwiftPMImportPersistentIdentifierPackageLockIntegrationTests : KGPBaseTest
     fun `identifier synchronization ignores non-Apple consumer projects when generating umbrella lock`(
         version: GradleVersion,
     ) {
-        val rootIdentifier = "root"
+        val defaultIdentifier = "default"
         val sharedIdentifier = "shared"
         val sharedProjectName = "shared"
         val sharedRepoName = "SharedPackage"
 
         project("empty", version) {
-            withLockFileFixture(
-                packageResolvedSynchronization = PackageResolvedSynchronization.Identifier(rootIdentifier),
-            ){
+            withLockFileFixture {
                 val sharedRepo = repoRef(sharedRepoName).also {
                     createRepo(it.name, listOf("1.0.0"))
                 }
 
-                initJvmSwiftPmProject{
-                    sourceSets.getByName("commonMain").dependencies {
-                        implementation(project(":$sharedProjectName"))
-                    }
-
-                    swiftPMDependencies {
-                        packageResolvedSynchronization = identifier(rootIdentifier)
-                    }
-                }
+                initJvmSwiftPmProject{}
 
                 val sharedProject = project("empty", version) {
                     withLockFileFixture(
@@ -815,7 +800,7 @@ class SwiftPMImportPersistentIdentifierPackageLockIntegrationTests : KGPBaseTest
 
 
                 val umbrellaRootPackageManifest =
-                    projectPath.resolve(".swiftpm-locks/$rootIdentifier/swiftImport/Package.swift")
+                    projectPath.resolve(".swiftpm-locks/$defaultIdentifier/swiftImport/Package.swift")
 
                 val umbrellaSharedPackageManifest =
                     projectPath.resolve(".swiftpm-locks/$sharedIdentifier/swiftImport/Package.swift")

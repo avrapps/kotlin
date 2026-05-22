@@ -577,7 +577,6 @@ class SwiftPMImportPersistentDefaultIdentifierPackageLockIntegrationTests : KGPB
     fun `jvm compilation does not materialize SwiftPM import tasks from KMP dependency with SwiftPM deps`(
         version: GradleVersion,
     ) {
-        val identifier = "default"
         val sharedProjectName = "shared"
         val sharedRepoName = "SharedPackage"
 
@@ -644,11 +643,7 @@ class SwiftPMImportPersistentDefaultIdentifierPackageLockIntegrationTests : KGPB
         project("empty", version) {
             withLockFileFixture{
 
-                initJvmSwiftPmProject{
-                    sourceSets.getByName("commonMain").dependencies {
-                        implementation(project(":$sharedProjectName"))
-                    }
-                }
+                initJvmSwiftPmProject{}
 
                 val sharedProject = project("empty", version) {
                     withLockFileFixture{
