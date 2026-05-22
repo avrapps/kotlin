@@ -643,11 +643,17 @@ class SwiftPMImportPersistentDefaultIdentifierPackageLockIntegrationTests : KGPB
         project("empty", version) {
             withLockFileFixture{
 
-                initJvmSwiftPmProject{}
+                initJvmSwiftPmProject{
+                    sourceSets.getByName("commonMain").dependencies {
+                        implementation(project(":$sharedProjectName"))
+                    }
+                }
 
                 val sharedProject = project("empty", version) {
                     withLockFileFixture{
-                        initSwiftPmProject(cacheDirFile) {}
+                        initSwiftPmProject(cacheDirFile) {
+                            jvm()
+                        }
                     }
                 }
 

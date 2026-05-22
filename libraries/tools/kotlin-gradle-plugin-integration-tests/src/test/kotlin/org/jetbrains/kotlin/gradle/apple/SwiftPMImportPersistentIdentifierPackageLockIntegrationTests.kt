@@ -776,13 +776,18 @@ class SwiftPMImportPersistentIdentifierPackageLockIntegrationTests : KGPBaseTest
                     createRepo(it.name, listOf("1.0.0"))
                 }
 
-                initJvmSwiftPmProject{}
+                initJvmSwiftPmProject{
+                    sourceSets.getByName("commonMain").dependencies {
+                        implementation(project(":$sharedProjectName"))
+                    }
+                }
 
                 val sharedProject = project("empty", version) {
                     withLockFileFixture(
                         packageResolvedSynchronization = PackageResolvedSynchronization.Identifier(sharedProjectName),
                     ) {
                         initSwiftPmProject(cacheDirFile) {
+                            jvm()
                             swiftPMDependencies {
                                 packageResolvedSynchronization = identifier(sharedIdentifier)
 
