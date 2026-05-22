@@ -27,6 +27,7 @@ import org.jetbrains.kotlin.library.KotlinLibrary
 import org.jetbrains.kotlin.load.java.descriptors.JavaCallableMemberDescriptor
 import org.jetbrains.kotlin.load.java.descriptors.JavaClassDescriptor
 import org.jetbrains.kotlin.load.java.lazy.descriptors.LazyJavaPackageFragment
+import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
 
 @OptIn(ObsoleteDescriptorBasedAPI::class)
@@ -115,6 +116,8 @@ class JKlibIrLinker(
 
         override fun contains(idSig: IdSignature): Boolean = resolveDescriptor(idSig) != null
 
+        override val definedPackageNames: Set<FqName>? get() = null
+
         private val descriptorFinder = DescriptorByIdSignatureFinderImpl(
             moduleDescriptor,
             descriptorMangler,
@@ -183,6 +186,8 @@ class JKlibIrLinker(
 
         override fun contains(idSig: IdSignature): Boolean =
             super.contains(idSig) || descriptorByIdSignatureFinder.findDescriptorBySignature(idSig) != null
+
+        override val definedPackageNames: Set<FqName>? get() = null
 
         override fun tryDeserializeIrSymbol(
             idSig: IdSignature,
