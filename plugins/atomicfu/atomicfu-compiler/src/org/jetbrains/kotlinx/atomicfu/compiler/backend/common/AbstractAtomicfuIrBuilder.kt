@@ -364,13 +364,8 @@ abstract class AbstractAtomicfuIrBuilder(
             origin = IrStatementOrigin.LAMBDA
         )
 
-    fun invokePropertyGetter(refGetter: IrExpression): IrCall {
-        require(refGetter.type.classOrNull == irBuiltIns.functionN(0).symbol) {
-            "Expected Function0 property reference getter, but found ${refGetter.type.render()}"
-        }
-        val returnType = (refGetter.type as IrSimpleType).arguments.last().typeOrFail
-        return irCall(atomicfuSymbols.invoke0Symbol, returnType).apply { dispatchReceiver = refGetter }
-    }
+    fun invokePropertyGetter(refGetter: IrExpression) =
+        irCall(atomicfuSymbols.invoke0Symbol, refGetter.type.getFunctionReturnType()).apply { dispatchReceiver = refGetter }
 
     fun toBoolean(irExpr: IrExpression) = irEquals(irExpr, irInt(1)) as IrCall
     fun toInt(irExpr: IrExpression) = irIfThenElse(irBuiltIns.intType, irExpr, irInt(1), irInt(0))
@@ -526,7 +521,7 @@ abstract class AbstractAtomicfuIrBuilder(
                     +irCall(atomicfuSymbols.invoke1Symbol).apply {
                         arguments[0] = irGet(action)
                         arguments[1] = irGet(cur)
-                        type = irBuiltIns.unitType
+                        type = action.type.getFunctionReturnType()
                     }
                 }
             }
@@ -591,7 +586,7 @@ abstract class AbstractAtomicfuIrBuilder(
                         irCall(atomicfuSymbols.invoke1Symbol).apply {
                             arguments[0] = irGet(action)
                             arguments[1] = irGet(cur)
-                            type = valueType
+                            type = action.type.getFunctionReturnType()
                         }, "atomicfu\$upd", false
                     )
                     +irIfThen(
@@ -613,4 +608,9 @@ abstract class AbstractAtomicfuIrBuilder(
                 }
             }
         }
+
+    private fun IrType.getFunctionReturnType(): IrType {
+        require(isFunction()) { "Expected FunctionN type, but got: ${this.render()}" }
+        return (this as IrSimpleType).arguments.last().typeOrFail
+    }
 }
