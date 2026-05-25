@@ -1,5 +1,5 @@
 // RUN_PIPELINE_TILL: FRONTEND
-// LANGUAGE: +InlineClasses
+// LANGUAGE: +InlineClasses, -ForbidValueClassRecursionViaTypeParameters
 // DIAGNOSTICS: -INLINE_CLASS_DEPRECATED
 
 inline class Test1(val x: <!VALUE_CLASS_CANNOT_BE_RECURSIVE!>Test1<!>)

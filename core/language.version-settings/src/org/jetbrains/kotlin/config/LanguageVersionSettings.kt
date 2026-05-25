@@ -557,6 +557,8 @@ enum class LanguageFeature(
         }
     },
 
+    ForbidValueClassRecursionViaTypeParameters(sinceVersion = KOTLIN_2_5, "KT-85848"),
+
     // 2.6
 
     ReportReificationProblemsInDnnAndFlexible(sinceVersion = KOTLIN_2_6, enabledInProgressiveMode = true, "KTLC-399"),

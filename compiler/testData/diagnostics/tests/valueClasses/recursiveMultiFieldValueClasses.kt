@@ -1,7 +1,7 @@
 // RUN_PIPELINE_TILL: FRONTEND
 // WITH_STDLIB
 // TARGET_BACKEND: JVM_IR
-// LANGUAGE: +JvmInlineMultiFieldValueClasses
+// LANGUAGE: +JvmInlineMultiFieldValueClasses, -ForbidValueClassRecursionViaTypeParameters
 
 
 @JvmInline

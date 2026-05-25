@@ -139,7 +139,11 @@ fun ConeKotlinType.isRecursiveValueClassType(session: FirSession): Boolean =
     isRecursiveValueClassType(hashSetOf(), session, onlyInline = false)
 
 private fun ConeKotlinType.isRecursiveValueClassType(visited: HashSet<ConeKotlinType>, session: FirSession, onlyInline: Boolean): Boolean {
-    val asRegularClass = this.toRegularClassSymbol(session)?.takeIf { it.isInlineOrValueClass() } ?: return false
+    val supportsTypeParametersRecursionRestriction =
+        session.languageVersionSettings.supportsFeature(LanguageFeature.ForbidValueClassRecursionViaTypeParameters)
+    val bound = if (supportsTypeParametersRecursionRestriction) leastUpperBound(session) else this
+
+    val asRegularClass = bound.toRegularClassSymbol(session)?.takeIf { it.isInlineOrValueClass() } ?: return false
     val primaryConstructor = asRegularClass.primaryConstructorIfAny(session) ?: return false
 
     if (primaryConstructor.valueParameterSymbols.size > 1 && onlyInline) return false
